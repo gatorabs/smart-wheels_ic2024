@@ -2,22 +2,25 @@
 
 
 int velocidade = 0;
-int direcao = 0;  // Direção padrão
+int direcao = 0;  
 String dadoRecebido = "";
 bool dadoCompleto = false;
 
 
-#define IN1 9
-#define IN2 10
-#define IN3 11
-#define IN4 12
+#define IN1 25
+#define IN2 26
+#define IN3 19
+#define IN4 21
+
+#define ENA_A 2
+#define ENA_B 4
 #define servoPin 6
 
-Servo servo_direcao
+Servo servo_direcao;
 
 // Tempo de controle
 unsigned long tempoUltimoProcessamento = 0;
-const unsigned long intervaloProcessamento = 100; // Intervalo em milissegundos para processamento
+const unsigned long intervaloProcessamento = 100; 
 
 void setup() {
   
@@ -50,11 +53,9 @@ void loop() {
    
     tempoUltimoProcessamento = millis();
 
-    // Pisca o LED interno ao receber dados
+    
     digitalWrite(LED_BUILTIN, HIGH);
-    delay(100);
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(100);
+    
 
     // Processa os dados recebidos
     int dados[8];
@@ -84,13 +85,13 @@ void loop() {
       
       if (velocidade > 0) {
 
-        /
+        
         digitalWrite(IN1, HIGH);
         digitalWrite(IN2, LOW);
         digitalWrite(IN3, HIGH);
         digitalWrite(IN4, LOW);
-        analogWrite(IN1, velocidade);  // Define a velocidade do Motor A
-        analogWrite(IN3, velocidade);  // Define a velocidade do Motor B
+        analogWrite(ENA_A, velocidade);  // Define a velocidade do Motor A
+        analogWrite(ENA_B, velocidade);  // Define a velocidade do Motor B
       } else {
         
         digitalWrite(IN1, LOW);
@@ -103,6 +104,7 @@ void loop() {
     // Limpa as variáveis para a próxima leitura
     dadoRecebido = "";
     dadoCompleto = false;
+    digitalWrite(LED_BUILTIN, LOW);
   } else if (!dadoCompleto) {
     Serial.println("Aguardando dados...");
   }

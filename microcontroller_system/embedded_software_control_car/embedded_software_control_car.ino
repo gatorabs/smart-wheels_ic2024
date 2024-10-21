@@ -1,111 +1,91 @@
-#include <Servo.h>
+#include <ESP32Servo.h>
+#include "BluetoothSerial.h"
+
+Servo dir_servo;
+BluetoothSerial SerialBT;
 
 
-int velocidade = 0;
-int direcao = 0;  
-String dadoRecebido = "";
-bool dadoCompleto = false;
+#define RPM_A 32
+#define RPM_B 14
 
 
-#define IN1 25
-#define IN2 26
-#define IN3 19
-#define IN4 21
-
-#define ENA_A 2
-#define ENA_B 4
-#define servoPin 6
-
-Servo servo_direcao;
-
-// Tempo de controle
-unsigned long tempoUltimoProcessamento = 0;
-const unsigned long intervaloProcessamento = 100; 
-
+#define IN1 33
+#define IN2 25
+#define IN3 27
+#define IN4 26
+int speed = 80;
+int angle = 0;
 void setup() {
-  
-  Serial.begin(115200);
-  
-  
-  servo_direcao.attach(servoPin);
+  // put your setup code here, to run once:
+  Serial.begin(9600);
+  SerialBT.begin("smartwheels_mini_kart");
+  dir_servo.attach(35);
 
- 
+  pinMode(RPM_A, OUTPUT);
+  pinMode(RPM_B, OUTPUT);
+
   pinMode(IN1, OUTPUT);
   pinMode(IN2, OUTPUT);
   pinMode(IN3, OUTPUT);
   pinMode(IN4, OUTPUT);
 
-  Serial.println("Aguardando dados...");
+  analogWrite(RPM_A, speed);
+  analogWrite(RPM_B, speed);
 }
 
 void loop() {
   
-  while (Serial.available()) {
-    char caractere = Serial.read();
-    dadoRecebido += caractere;
-    if (caractere == '#') {
-      dadoCompleto = true;  // Finaliza a recepção ao encontrar o '#'
-    }
-  }
+  if (Serial.available() > 0) {  
+        String input = Serial.readStringUntil('\n'); 
+        angle = input.toInt(); 
 
+        
+        if (angle < 60) angle = 60;
+        if (angle > 140) angle = 140;
+
+        dir_servo.write(angle); 
+        Serial.print("Ângulo recebido: "); 
+        Serial.println(angle);
+    }
+}
+
+
+void motor_control(int m1_a, int m1_b, int m2_a, int m2_b){
+  digitalWrite(IN1, m1_a);
+  digitalWrite(IN2, m1_b);
+  digitalWrite(IN3, m2_a);
+  digitalWrite(IN4, m2_b);
+
+    
   
-  if (dadoCompleto && (millis() - tempoUltimoProcessamento >= intervaloProcessamento)) {
-   
-    tempoUltimoProcessamento = millis();
+}
 
+
+void bluetooth_mode(){
+  if(SerialBT.available()){
+    char incomingByte = SerialBT.read();
     
-    digitalWrite(LED_BUILTIN, HIGH);
-    
-
-    // Processa os dados recebidos
-    int dados[8];
-    int index = 0;
-    String temp = "";
-    
-    for (int i = 0; i < dadoRecebido.length(); i++) {
-      if (dadoRecebido[i] == ',') {
-        dados[index] = temp.toInt();
-        temp = "";
-        index++;
-      }
-    }
-
-    if (index >= 1) {
-
-      velocidade = dados[0];  // A velocidade é recebida em RPM
-      direcao = dados[1];
-
-      Serial.print("Velocidade: ");
-      Serial.println(velocidade);
-      Serial.print("Direção: ");
-      Serial.println(direcao);
-
-      servo_direcao.write(direcao);  
-
-      
-      if (velocidade > 0) {
-
+    Serial.println(incomingByte);
+    switch(incomingByte){
+      case 'f':
+        motor_control(1,0,1,0);
         
-        digitalWrite(IN1, HIGH);
-        digitalWrite(IN2, LOW);
-        digitalWrite(IN3, HIGH);
-        digitalWrite(IN4, LOW);
-        analogWrite(ENA_A, velocidade);  // Define a velocidade do Motor A
-        analogWrite(ENA_B, velocidade);  // Define a velocidade do Motor B
-      } else {
         
-        digitalWrite(IN1, LOW);
-        digitalWrite(IN2, LOW);
-        digitalWrite(IN3, LOW);
-        digitalWrite(IN4, LOW);
-      }
+        break;
+      case 'b':
+        motor_control(0,1,0,1);
+        break;
+      case 'd':
+        dir_servo.write(140);
+        break;
+      case 'a':
+        dir_servo.write(60);
+        break;
+      case 'q':
+        dir_servo.write(90);
+        motor_control(0,0,0,0);
+        break;
+        
     }
-
-    // Limpa as variáveis para a próxima leitura
-    dadoRecebido = "";
-    dadoCompleto = false;
-    digitalWrite(LED_BUILTIN, LOW);
-  } else if (!dadoCompleto) {
-    Serial.println("Aguardando dados...");
   }
 }
